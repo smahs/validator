@@ -25,6 +25,9 @@ import (
 	"unicode"
 )
 
+// This fork is for returning json tag for a field's name
+const jsonTag string = "json"
+
 // TextErr is an error that also implements the TextMarshaller interface for
 // serializing out to various plain text encodings. Packages creating their
 // own custom errors should use TextErr if they're intending to use serializing
@@ -243,9 +246,23 @@ func (mv *Validator) Validate(v interface{}) error {
 
 		mv.deepValidateCollection(f, fname, m) // no-op if field is not a struct, interface, array, slice or map
 
-		if len(errs) > 0 {
-			m[st.Field(i).Name] = errs
+		if len(errs) == 0 {
+			continue
 		}
+
+		// Parse json tag to get json field name
+		jtags := st.Field(i).Tag.Get(jsonTag)
+		if strings.HasPrefix(jtags, "-") {
+			continue
+		}
+		var name string
+		if idx := strings.Index(jtags, ","); idx != -1 {
+			name = jtags[:idx]
+		} else {
+			name = jtags
+		}
+
+		m[name] = errs
 	}
 
 	if len(m) > 0 {
